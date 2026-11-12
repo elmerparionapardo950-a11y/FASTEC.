@@ -68,6 +68,7 @@
       ${/^\s*(sin\s*c[oó]digo)?\s*$/i.test(p.model || '') ? '' : `<span class="catalog-model">${e(p.model)}</span>`}
       ${priceHtml}
       ${stock ? `<span class="product-stock stock-${stockCls}">${stock}</span>` : ''}
+      <div class="card-actions"><button type="button" class="btn-add" data-add="${e(p.id)}"${hasStock && sn <= 0 ? ' disabled' : ''}>${hasStock && sn <= 0 ? 'Agotado' : 'Agregar al carrito'}</button><button type="button" class="btn-fav" data-fav="${e(p.id)}" aria-label="Favorito" aria-pressed="false">♡</button></div>
       <span class="product-cta">Consultar por WhatsApp ›</span>
     </article>`;
   };
