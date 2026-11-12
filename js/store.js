@@ -14,9 +14,13 @@
     }
     return false;
   };
-  window.fastecSetSession = function(user, remember, hours, days){
+  window.fastecSetSession = function(user, remember, hours, days, tokens){
     const exp = Date.now() + (remember ? days*24 : hours) * 3600000;
-    (remember ? localStorage : sessionStorage).setItem('fastec_session', JSON.stringify({u:user, exp}));
+    (remember ? localStorage : sessionStorage).setItem('fastec_session', JSON.stringify({u:user, exp, at:tokens&&tokens.at, rt:tokens&&tokens.rt}));
+  };
+  window.fastecSession = function(){
+    for(const st of [sessionStorage, localStorage]){ try{ const s = JSON.parse(st.getItem('fastec_session')||'null'); if(s && s.exp > Date.now()) return s; }catch(e){} }
+    return null;
   };
   window.fastecClearSession = function(){
     try{ sessionStorage.removeItem('fastec_session'); localStorage.removeItem('fastec_session'); }catch(e){}

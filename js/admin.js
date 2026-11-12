@@ -1,7 +1,7 @@
 (function(){
   const $ = id => document.getElementById(id), esc = fastecEsc;
   let data = getSiteData(), published = getPublishedData(), editId = null, editSvc = null;
-  $('hello').textContent = FASTEC_AUTH.user;
+  $('hello').textContent = (fastecSession()||{}).u||'Administrador';
 
   /* ---------- utilidades ---------- */
   const dirty = () => JSON.stringify(data) !== JSON.stringify(published);
