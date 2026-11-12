@@ -62,7 +62,8 @@
         // ¿Es administrador? La base solo devuelve su fila si está en la tabla "admins" (regla RLS).
         const a = await api('/rest/v1/admins?select=user_id', {headers: {Authorization: 'Bearer ' + t.body.access_token}});
         if(!a.ok || !Array.isArray(a.body) || !a.body.length){
-          showErr('<strong>Sin permiso:</strong> esta cuenta no es administradora de FASTEC.');
+          if(!a.ok) showErr('<strong>No se pudo verificar el permiso</strong> (código ' + a.status + '): ' + ((a.body && (a.body.message || a.body.msg)) || 'error del servidor') + '. Ejecuta supabase/permisos.sql en Supabase.');
+          else showErr('<strong>Sin permiso:</strong> esta cuenta no es administradora de FASTEC.');
         } else {
           localStorage.removeItem(KEY);
           fastecSetSession(email, $('lgRemember').checked, 8, 7, {at: t.body.access_token, rt: t.body.refresh_token});

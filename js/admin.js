@@ -1,13 +1,19 @@
-(function(){
+fastecCloudLoad().then(function(){
   const $ = id => document.getElementById(id), esc = fastecEsc;
-  let data = getSiteData(), published = getPublishedData(), editId = null, editSvc = null;
+  let data = getSiteData(), published = JSON.parse(JSON.stringify(data)), editId = null, editSvc = null;
   $('hello').textContent = (fastecSession()||{}).u||'Administrador';
 
   /* ---------- utilidades ---------- */
   const dirty = () => JSON.stringify(data) !== JSON.stringify(published);
   function toast(m){ const t = document.createElement('div'); t.className = 'ad-toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
-  function status(){ const d = dirty(), p = $('statePill'); p.textContent = d ? '● Cambios sin publicar' : '✓ Todo publicado'; p.classList.toggle('dirty', d); }
-  function save(){ if(!saveSiteData(data)) alert('No se pudo guardar: el almacenamiento del navegador está lleno. Usa imágenes más pequeñas o rutas a la carpeta img/.'); status(); stats(); }
+  let saving = Promise.resolve();
+  function status(msg, cls){ const p = $('statePill'); p.textContent = msg || '✓ Guardado en la nube'; p.classList.toggle('dirty', cls === 'err' || cls === 'busy'); }
+  function save(){
+    status('Guardando…', 'busy'); stats();
+    const snap = JSON.parse(JSON.stringify(data));
+    saving = saving.then(() => fastecCloudPush(snap, published)).then(() => { published = snap; status(); })
+      .catch(e => { console.error(e); status('⚠ Error al guardar', 'err'); alert('No se pudo guardar en Supabase: ' + e.message); });
+  }
   const money = v => { const n = Number(String(v ?? '').replace(',', '.')); return n > 0 ? fastecMoney(n) : ''; };
   const cleanNum = v => String(v).trim().replace(',', '.').replace(/[^\d.]/g, '');
 
@@ -93,11 +99,11 @@
   const pm = $('pModal'), pf = $('pForm');
   function formObj(){
     const f = pf.elements, st = f.stock.value.trim();
-    return { name: f.name.value.trim() || 'Nombre del producto', category: f.category.value.trim(), model: f.model.value.trim() || 'Modelo',
+    return { name: f.name.value.trim() || 'Nombre del producto', category: f.category.value.trim(), brand: f.brand.value.trim(), model: f.model.value.trim(), description: f.description.value.trim(),
       price: cleanNum(f.price.value), oldPrice: cleanNum(f.oldPrice.value), offer: f.offer.value.trim(), stock: st === '' ? '' : Number(st),
       image: f.image.value.trim(), featured: f.featured.checked, active: f.active.checked };
   }
-  const preview = () => { $('pPreview').innerHTML = fastecProductCard(formObj()); };
+  const preview = () => { const o = formObj(); $('pPreview').innerHTML = fastecProductCard(Object.assign({}, o, {model: [o.brand, o.model].filter(Boolean).join(' ')})); };
   pf.addEventListener('input', preview);
 
   function openProduct(id = null){
@@ -105,7 +111,7 @@
     $('pTitle').textContent = id ? 'Editar producto' : 'Añadir producto';
     if(id){
       const p = data.products.find(x => x.id === id), f = pf.elements;
-      ['name', 'category', 'model', 'price', 'oldPrice', 'offer', 'stock', 'image'].forEach(k => f[k].value = p[k] ?? '');
+      ['name', 'category', 'brand', 'model', 'description', 'price', 'oldPrice', 'offer', 'stock', 'image'].forEach(k => f[k].value = p[k] ?? '');
       f.featured.checked = !!p.featured; f.active.checked = p.active !== false;
     }
     preview(); pm.hidden = false;
@@ -127,7 +133,7 @@
   }
   pf.elements.imageFile.addEventListener('change', async () => {
     const file = pf.elements.imageFile.files[0]; if(!file) return;
-    try{ pf.elements.image.value = await resize(file); preview(); }catch(e){ alert('No se pudo leer esa imagen.'); }
+    try{ toast('Subiendo imagen…'); const blob = await (await fetch(await resize(file))).blob(); pf.elements.image.value = await fastecUploadImage(blob); preview(); toast('Imagen subida'); }catch(e){ alert('No se pudo subir la imagen: ' + e.message); }
   });
 
   pf.addEventListener('submit', e => {
@@ -186,11 +192,7 @@
   function download(name, text, type){
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 500);
   }
-  function pubInfo(){
-    const emb = data.products.filter(p => (p.image || '').startsWith('data:')).length;
-    $('pubInfo').innerHTML = dirty() ? 'Tienes cambios sin publicar.' : 'No hay cambios nuevos: lo que ves ya coincide con lo publicado.';
-    if(emb) $('pubInfo').innerHTML += ` Hay <b>${emb}</b> imágenes incrustadas en el archivo (lo hacen más pesado); para un sitio más rápido súbelas a la carpeta <code>img/</code> y usa su ruta.`;
-  }
+  function pubInfo(){ $('pubInfo').innerHTML = 'Los cambios se guardan solos en Supabase y se ven al instante en la tienda. Ya no hace falta descargar ni subir <code>data.js</code>.'; $('pubBtn').hidden = true; }
   $('pubBtn').onclick = () => {
     download('data.js', `// FASTEC - datos publicados del sitio. Generado desde el panel el ${new Date().toLocaleString('es-PE')}\nconst FASTEC_DEFAULT_DATA = ${JSON.stringify(data, null, 2)};\n`, 'text/javascript');
     toast('data.js descargado: súbelo a tu hosting');
@@ -210,4 +212,4 @@
   function initAll(){ fillCats(); renderProducts(); renderPrices(); renderServices(); stats(); status();
     Object.entries(data.company || {}).forEach(([k, v]) => { if(cf.elements[k]) cf.elements[k].value = v; }); }
   initAll();
-})();
+});

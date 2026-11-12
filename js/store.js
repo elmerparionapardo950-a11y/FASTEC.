@@ -30,6 +30,7 @@
   window.getPublishedData = () => clone(FASTEC_DEFAULT_DATA);
   window.getSiteData = function(){
     const pub = window.__FASTEC_REMOTE ? clone(window.__FASTEC_REMOTE) : clone(FASTEC_DEFAULT_DATA);
+    if(fastecIsAdmin() && window.__FASTEC_ADMIN_DATA) return clone(window.__FASTEC_ADMIN_DATA);
     if(fastecIsAdmin()){
       try{
         const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
